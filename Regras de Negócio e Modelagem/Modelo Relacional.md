@@ -36,8 +36,8 @@
 | Coluna | Tipo PostgreSQL | Obrigatório? | Restrições |
 |---|---|---|---|
 | id_gol | BIGINT | Sim | PK, GENERATED ALWAYS AS IDENTITY |
-| id_partida | BIGINT | Sim | FK → PARTIDAS(id_partida); ON DELETE RESTRICT |
-| id_jogador | BIGINT | Sim | FK → JOGADORES(id_jogador); ON DELETE RESTRICT |
+| id_partida | BIGINT | Sim | FK -> PARTIDAS(id_partida); ON DELETE RESTRICT |
+| id_jogador | BIGINT | Sim | FK -> JOGADORES(id_jogador); ON DELETE RESTRICT |
 | minuto | SMALLINT | Sim | CHECK (minuto BETWEEN 1 AND 130); minuto decorrido absoluto |
 
 #### Nota: o minuto de acréscimo pode ser representado pelo minuto decorrido absoluto (por exemplo, 47), sem formato '45+2'
@@ -46,11 +46,11 @@
 
 | Relação | Cardinalidade | Significado |
 |---|---|---|
-| CLUBES → JOGADORES | 1:N | Cada jogador deve pertencer a exatamente um clube; um clube pode ter zero ou muitos jogadores. |
-| CLUBES → PARTIDAS (mandante) | 1:N | Cada partida tem exatamente um mandante; um clube pode ser mandante em muitas partidas. |
-| CLUBES → PARTIDAS (visitante) | 1:N | Cada partida tem exatamente um visitante; um clube pode ser visitante em muitas partidas. |
-| PARTIDAS → GOLS | 1:N | Cada gol pertence a exatamente uma partida; uma partida pode ter nenhum ou muitos gols. |
-| JOGADORES → GOLS | 1:N | Cada gol tem exatamente um autor; um jogador pode ter nenhum ou muitos gols. |
+| CLUBES -> JOGADORES | 1:N | Cada jogador deve pertencer a exatamente um clube; um clube pode ter zero ou muitos jogadores. |
+| CLUBES -> PARTIDAS (mandante) | 1:N | Cada partida tem exatamente um mandante; um clube pode ser mandante em muitas partidas. |
+| CLUBES -> PARTIDAS (visitante) | 1:N | Cada partida tem exatamente um visitante; um clube pode ser visitante em muitas partidas. |
+| PARTIDAS -> GOLS | 1:N | Cada gol pertence a exatamente uma partida; uma partida pode ter nenhum ou muitos gols. |
+| JOGADORES -> GOLS | 1:N | Cada gol tem exatamente um autor; um jogador pode ter nenhum ou muitos gols. |
 
 #### Todas as chaves estrangeiras são obrigatórias (NOT NULL). As referências são protegidas sem exclusão em cascata (RESTRICT ou NO ACTION), com mensagens amigáveis na aplicação
 
@@ -80,9 +80,9 @@
 
 ## 4. Relatórios obrigatórios previstos
 
-#### Relatório 1 — Artilharia (GROUP BY): quantificar gols por jogador (COUNT(id_gol)), agrupados por jogador, usando GOLS, JOGADORES e PARTIDAS e filtrando partidas finalizadas. Serve como relatório agregado do edital
+#### Relatório 1 - Artilharia (GROUP BY): quantificar gols por jogador (COUNT(id_gol)), agrupados por jogador, usando GOLS, JOGADORES e PARTIDAS e filtrando partidas finalizadas. Serve como relatório agregado do edital
 
-#### Relatório 2 — Partidas com clubes (JOIN): listar rodada, data, clube mandante, clube visitante, status e placar a partir de PARTIDAS com duas junções à tabela CLUBES (uma por papel). Serve como relatório de junção do edital
+#### Relatório 2 - Partidas com clubes (JOIN): listar rodada, data, clube mandante, clube visitante, status e placar a partir de PARTIDAS com duas junções à tabela CLUBES (uma por papel). Serve como relatório de junção do edital
 
 ## 5. Requisitos gerais do edital associados
 

@@ -1,98 +1,319 @@
-# Etapa 1: Modelagem Relacional
+# Modelo Relacional - Gerenciador de Campeonato de Futebol
 
-#### Projeto: Gerenciador de Campeonato de Futebol
-#### Tecnologias: PostgreSQL (SGBD) e Python (Aplicação)
-#### Escopo da primeira entrega: CRUD de CLUBES, JOGADORES, PARTIDAS e GOLS. Dois relatórios de SQL obrigatórios.
-#### Modelo: um campeonato, sem cadastro de temporadas ou transferência de atletas
+## 1. Informações do projeto
 
-## 1. Dicionário de Dados
+**Projeto:** Gerenciador de Campeonato de Futebol
 
-### CLUBES:
+**Banco de dados:** PostgreSQL
 
-| Coluna | Tipo PostgreSQL | Obrigatório? | Restrições |
-|---|---|---|---|
-| id_clube | BIGINT | Sim | PK, GENERATED ALWAYS AS IDENTITY |
-| nome | VARCHAR(100) | Sim | UNIQUE, não vazio após trim (validação na aplicação) |
-| cidade | VARCHAR(80) | Não | Opcional |
+**Linguagem:** Python
 
-### PARTIDAS: 
+**Objetivo:** Desenvolver um sistema para gerenciar clubes, jogadores, partidas e gols de um campeonato de futebol.
 
-| Coluna | Tipo PostgreSQL | Obrigatório? | Restrições |
-|---|---|---|---|
-| id_partida | BIGINT | Sim | PK, GENERATED ALWAYS AS IDENTITY |
-| id_mandante | BIGINT | Sim | FK -> CLUBES(id_clube); ON DELETE RESTRICT |
-| id_visitante | BIGINT | Sim | FK -> CLUBES(id_clube); ON DELETE RESTRICT |
-| rodada | INTEGER | Sim | CHECK (rodada > 0) |
-| data_partida | DATE | Sim | Data da partida |
-| status | VARCHAR(10) | Sim | DEFAULT 'ABERTA'; CHECK IN ('ABERTA','FINALIZADA') |
-| gols_mandante | INTEGER | Condicional | NULL quando ABERTA; >=0 quando FINALIZADA |
-| gols_visitante | INTEGER | Condicional | NULL quando ABERTA; >=0 quando FINALIZADA |
+O sistema terá operações de cadastro, consulta, atualização e exclusão (CRUD), além de relatórios utilizando SQL.
 
-#### CHECK adicional: id_mandante <> id_visitante
-#### CHECK de estado: quando status = 'ABERTA', ambos os campos de placar são NULL. Quando status = 'FINALIZADA' ambos são NOT NULL e >= 0.
+Nesta primeira versão, o sistema trabalhará com apenas um campeonato, sem transferências de jogadores ou cadastro de temporadas.
 
-### GOLS:
+O script responsável pela criação das tabelas está em src/sql/schema.sql.
 
-| Coluna | Tipo PostgreSQL | Obrigatório? | Restrições |
-|---|---|---|---|
-| id_gol | BIGINT | Sim | PK, GENERATED ALWAYS AS IDENTITY |
-| id_partida | BIGINT | Sim | FK -> PARTIDAS(id_partida); ON DELETE RESTRICT |
-| id_jogador | BIGINT | Sim | FK -> JOGADORES(id_jogador); ON DELETE RESTRICT |
-| minuto | SMALLINT | Sim | CHECK (minuto BETWEEN 1 AND 130); minuto decorrido absoluto |
+## 2. Tabelas do banco de dados
 
-#### Nota: o minuto de acréscimo pode ser representado pelo minuto decorrido absoluto (por exemplo, 47), sem formato '45+2'
+O banco de dados possui quatro tabelas: CLUBES, JOGADORES, PARTIDAS e GOLS.
 
-## 2. Cardinalidades e integridade referencial
+### 2.1. CLUBES
 
-| Relação | Cardinalidade | Significado |
-|---|---|---|
-| CLUBES -> JOGADORES | 1:N | Cada jogador deve pertencer a exatamente um clube; um clube pode ter zero ou muitos jogadores. |
-| CLUBES -> PARTIDAS (mandante) | 1:N | Cada partida tem exatamente um mandante; um clube pode ser mandante em muitas partidas. |
-| CLUBES -> PARTIDAS (visitante) | 1:N | Cada partida tem exatamente um visitante; um clube pode ser visitante em muitas partidas. |
-| PARTIDAS -> GOLS | 1:N | Cada gol pertence a exatamente uma partida; uma partida pode ter nenhum ou muitos gols. |
-| JOGADORES -> GOLS | 1:N | Cada gol tem exatamente um autor; um jogador pode ter nenhum ou muitos gols. |
+Armazena as informações dos clubes participantes do campeonato.
 
-#### Todas as chaves estrangeiras são obrigatórias (NOT NULL). As referências são protegidas sem exclusão em cascata (RESTRICT ou NO ACTION), com mensagens amigáveis na aplicação
+**Atributos:**
 
-## 3. Regras de negócio
+- `id_clube`: BIGINT, chave primária (PK), gerada automaticamente.
+- `nome`: VARCHAR(100), obrigatório e único.
+- `cidade`: VARCHAR(80), opcional.
 
-#### 1. Campeonato único: as quatro tabelas representam um campeonato em andamento; não há CAMPEONATOS ou TEMPORADAS nesta versão
+**Restrições:**
 
-#### 2. Clube único: nomes de clubes devem ser únicos. Um clube não pode jogar contra si mesmo
+- Cada clube possui um identificador único.
+- Não é permitido cadastrar dois clubes com o mesmo nome.
+- O nome do clube não pode ser nulo.
+- A aplicação deverá impedir nomes vazios ou compostos apenas por espaços.
 
-#### 3. Partidas: rodada > 0. A aplicação deve impedir a duplicação da mesma partida na mesma rodada, inclusive invertendo mandante e visitante. Uma regra adicional de cada clube jogar no máximo uma vez por rodada pode ser adotada no CRUD
+### 2.2. JOGADORES
 
-#### 4. Elenco: cada jogador possui um id_clube; não há transferência nesta versão. Se existir gol associado, o clube do jogador não pode ser alterado (para preservar o histórico)
+Armazena os jogadores cadastrados e seus respectivos clubes.
 
-#### 5. Autor de gol: o jogador deve pertencer ao clube mandante ou visitante da partida. Esse teste envolve múltiplas tabelas e será executado pela aplicação Python
+**Atributos:**
 
-#### 6. luxo da partida: criar partida com status = 'ABERTA' e placar NULL. Com a partida aberta, cadastrar ou alterar os gols. Ao finalizar, contar os gols por clube, gravar o placar resultante e definir status = 'FINALIZADA' na mesma transação
+- `id_jogador`: BIGINT, chave primária (PK), gerada automaticamente.
+- `nome`: VARCHAR(100), obrigatório.
+- `posicao`: VARCHAR(20), obrigatório.
+- `id_clube`: BIGINT, chave estrangeira (FK), obrigatória.
 
-#### 7. Empate sem gols: uma partida sem gols pode ser finalizada com placar 0 x 0
+**Restrições:**
 
-#### 8. Edição após finalizar: para alterar ou excluir gols de uma partida finalizada, primeiro reabrir a partida (status ABERTA e placar NULL); após os ajustes, finalizar novamente. A aplicação deve tratar essas mudanças em transação
+- Cada jogador pertence a um clube existente.
+- O nome e a posição são obrigatórios.
+- O clube deve existir antes do cadastro do jogador.
+- Não é permitido excluir um clube que possua jogadores cadastrados.
 
-#### 9. Exclusão: não excluir clubes que tenham jogadores ou partidas, jogadores com gols, nem partidas com gols. Exibir mensagem informando as dependências
+**Posições permitidas:**
 
-#### 10. Relatórios: considerar somente partidas FINALIZADAS para resultados e estatísticas de gols. A pontuação/classificação poderá ser implementada numa etapa posterior, sem alteração das quatro entidades.
+- Goleiro
+- Zagueiro
+- Lateral
+- Volante
+- Meio-Campo
+- Atacante
 
-#### 11. Limites da versão inicial: não há gols contra, disputas de pênaltis, transferências, várias temporadas, assistências ou cartões. Caso essas funções sejam necessárias, a modelagem deverá ser ampliada.
+Essas posições já são validadas no banco por uma restrição `CHECK`.
 
-## 4. Relatórios obrigatórios previstos
+### 2.3. PARTIDAS
 
-#### Relatório 1 - Artilharia (GROUP BY): quantificar gols por jogador (COUNT(id_gol)), agrupados por jogador, usando GOLS, JOGADORES e PARTIDAS e filtrando partidas finalizadas. Serve como relatório agregado do edital
+Armazena os confrontos realizados ou programados entre os clubes.
 
-#### Relatório 2 - Partidas com clubes (JOIN): listar rodada, data, clube mandante, clube visitante, status e placar a partir de PARTIDAS com duas junções à tabela CLUBES (uma por papel). Serve como relatório de junção do edital
+**Atributos:**
 
-## 5. Requisitos gerais do edital associados
+- `id_partida`: BIGINT, chave primária (PK), gerada automaticamente.
+- `id_mandante`: BIGINT, chave estrangeira (FK), obrigatória.
+- `id_visitante`: BIGINT, chave estrangeira (FK), obrigatória.
+- `rodada`: INTEGER, obrigatório.
+- `data_partida`: DATE, obrigatório.
+- `status`: VARCHAR(10), obrigatório, com valor padrão ABERTA.
+- `gols_mandante`: INTEGER, preenchido quando a partida é finalizada.
+- `gols_visitante`: INTEGER, preenchido quando a partida é finalizada.
 
-#### - Gerar diagrama relacional com atributos, tipos, chaves primárias/estrangeiras, obrigatoriedades e cardinalidades
-#### - Criar o script SQL no PostgreSQL na próxima etapa
-#### - Implementar CRUD com submenus para cada uma das quatro entidades
-#### - Exibir o nome do sistema, integrantes e contagem de registros em cada tabela na tela inicial
-#### - Criar os dois relatórios SQL, mantendo consultas SQL explícitas e sem ORM
-#### - Executar em Linux, documentar no README.md, gravar vídeo e incluir PROMPTS.md para registrar o uso de IA (caso tenha)
+**Restrições:**
 
-## 6. Próxima etapa
+- Um clube não pode enfrentar a si mesmo.
+- Os clubes mandante e visitante devem estar cadastrados.
+- A rodada deve ser maior que zero.
+- O status pode ser apenas ABERTA ou FINALIZADA.
+- Uma partida ABERTA não possui placar registrado.
+- Uma partida FINALIZADA deve possuir placar.
+- Os valores do placar não podem ser negativos.
 
-#### Etapa 2 do projeto: criar schema.sql com as quatro tabelas: PK, FK, CHECK, UNIQUE e integridade referencial: executar no PostgreSQL e testar com registros de exemplo
+Essas restrições já estão definidas no `schema.sql`.
+
+### 2.4. GOLS
+
+Armazena os gols marcados pelos jogadores durante as partidas.
+
+**Atributos:**
+
+- `id_gol`: BIGINT, chave primária (PK), gerada automaticamente.
+- `id_partida`: BIGINT, chave estrangeira (FK), obrigatória.
+- `id_jogador`: BIGINT, chave estrangeira (FK), obrigatória.
+- `minuto`: SMALLINT, obrigatório.
+
+**Restrições:**
+
+- Cada gol pertence a uma partida existente.
+- Cada gol está associado a um jogador existente.
+- O minuto do gol deve estar entre 1 e 130.
+- Um jogador pode marcar vários gols na mesma partida.
+- A aplicação deverá verificar se o jogador pertence a um dos clubes participantes.
+
+Para simplificar, os acréscimos serão armazenados como minutos absolutos. Por exemplo, um gol aos 45+2 será registrado como minuto 47.
+
+## 3. Relacionamentos entre as tabelas
+
+O banco possui cinco relacionamentos do tipo 1:N (um para muitos).
+
+**CLUBES e JOGADORES**
+
+- Um clube pode possuir vários jogadores.
+- Cada jogador pertence a um único clube.
+
+**CLUBES e PARTIDAS (mandante)**
+
+- Um clube pode participar como mandante em várias partidas.
+- Cada partida possui apenas um mandante.
+
+**CLUBES e PARTIDAS (visitante)**
+
+- Um clube pode participar como visitante em várias partidas.
+- Cada partida possui apenas um visitante.
+
+**PARTIDAS e GOLS**
+
+- Uma partida pode possuir vários gols ou nenhum.
+- Cada gol pertence a uma única partida.
+
+**JOGADORES e GOLS**
+
+- Um jogador pode marcar vários gols ou nenhum.
+- Cada gol está associado a um único jogador.
+
+Todas as chaves estrangeiras são obrigatórias e utilizam `ON DELETE RESTRICT`.
+
+Isso impede que registros sejam excluídos enquanto estiverem sendo utilizados por outras tabelas.
+
+O diagrama está no arquivo `Regras de Negócio e Modelagem/diagrama_relacional.mmd`.
+
+## 4. Regras de negócio
+
+Além das restrições do banco, o sistema Python precisará implementar algumas regras.
+
+### 4.1. Cadastro de clubes
+
+- Não permitir nomes vazios.
+- Não permitir nomes duplicados.
+- Impedir a exclusão de clubes que tenham jogadores ou partidas associados.
+
+### 4.2. Cadastro de jogadores
+
+- Cada jogador deve estar associado a um clube.
+- A posição deve estar entre as opções permitidas.
+- Não permitir alterar o clube de um jogador que já possua gols registrados.
+
+Essa última regra evita problemas no histórico dos gols, já que não haverá sistema de transferências nesta versão.
+
+### 4.3. Registro de partidas
+
+- Mandante e visitante devem ser clubes diferentes.
+- Não permitir o mesmo confronto duas vezes na mesma rodada, mesmo com mandante e visitante invertidos.
+- O sistema permitirá cadastrar partidas abertas.
+- Uma partida só receberá placar quando for finalizada.
+
+A verificação de confrontos repetidos será feita na aplicação Python, pois ainda não existe uma restrição específica no SQL para isso.
+
+### 4.4. Registro de gols
+
+- O jogador que marcou deve pertencer a um dos clubes participantes.
+- Só será permitido cadastrar, atualizar ou excluir gols em partidas abertas.
+- Uma partida poderá terminar sem gols, com placar de 0 a 0.
+
+### 4.5. Finalização das partidas
+
+Quando uma partida for finalizada, o sistema deverá:
+
+1. Consultar os gols cadastrados naquela partida.
+2. Identificar a qual clube pertence cada jogador que marcou.
+3. Contar os gols do mandante e do visitante.
+4. Atualizar o placar da partida.
+5. Alterar o status para FINALIZADA.
+
+Essas alterações deverão ocorrer dentro de uma transação no banco de dados.
+
+Caso seja necessário corrigir algum gol depois da finalização, a partida deverá ser reaberta antes da alteração.
+
+### 4.6. Exclusão de registros
+
+O sistema deverá informar quando um registro não puder ser excluído devido a relacionamentos com outras tabelas.
+
+Não haverá exclusão automática de registros relacionados.
+
+## 5. Relatórios do sistema
+
+O projeto deverá possuir pelo menos dois relatórios utilizando consultas SQL.
+
+### 5.1. Relatório de artilharia
+
+Mostrará a quantidade de gols marcados por cada jogador.
+
+**Informações apresentadas:**
+
+- Nome do jogador.
+- Clube do jogador.
+- Quantidade de gols marcados.
+
+**SQL utilizado:**
+
+- `SELECT`
+- `COUNT`
+- `GROUP BY`
+- `JOIN`
+- `ORDER BY`
+
+Serão considerados apenas gols de partidas finalizadas.
+
+### 5.2. Relatório de partidas
+
+Mostrará as partidas cadastradas no campeonato.
+
+**Informações apresentadas:**
+
+- Rodada.
+- Data da partida.
+- Clube mandante.
+- Clube visitante.
+- Status da partida.
+- Placar, quando disponível.
+
+**SQL utilizado:**
+
+- `SELECT`
+- `JOIN`
+- `ORDER BY`
+
+Esse relatório utilizará a tabela PARTIDAS e duas junções com a tabela CLUBES, uma para o mandante e outra para o visitante.
+
+## 6. Funcionalidades do sistema
+
+O sistema será executado pelo terminal e deverá possuir um menu principal.
+
+**Menu previsto:**
+
+1. Gerenciar clubes.
+2. Gerenciar jogadores.
+3. Gerenciar partidas.
+4. Gerenciar gols.
+5. Consultar relatórios.
+6. Sair.
+
+Cada opção de gerenciamento deverá permitir:
+
+- Cadastrar registros.
+- Listar registros.
+- Atualizar registros.
+- Excluir registros.
+
+Na inicialização, o programa deverá mostrar o nome do sistema, os nomes dos integrantes do grupo e a quantidade de registros presentes em cada tabela.
+
+## 7. Limitações da primeira versão
+
+Para manter o projeto dentro do prazo, algumas funcionalidades não serão desenvolvidas inicialmente:
+
+- Transferências de jogadores.
+- Cadastro de várias temporadas.
+- Gols contra.
+- Disputas de pênaltis.
+- Assistências.
+- Cartões amarelos e vermelhos.
+- Classificação completa do campeonato.
+
+A classificação poderá ser implementada futuramente utilizando os resultados das partidas, sem precisar criar uma tabela específica.
+
+Também poderá ser adicionada uma regra para impedir que um clube dispute mais de uma partida na mesma rodada.
+
+## 8. Situação atual do projeto
+
+**Já desenvolvido:**
+
+- Definição do tema.
+- Modelagem das quatro tabelas.
+- Definição dos atributos e relacionamentos.
+- Diagrama relacional em Mermaid.
+- Definição das regras de negócio.
+- Script SQL de criação das tabelas (`schema.sql`).
+
+**Ainda precisamos fazer ou validar:**
+
+1. Executar e testar o `schema.sql` no PostgreSQL.
+2. Verificar o funcionamento das chaves estrangeiras e restrições.
+3. Exportar o diagrama relacional em PDF, PNG ou JPEG.
+4. Criar a conexão entre Python e PostgreSQL.
+5. Desenvolver as classes e controladores.
+6. Implementar as operações CRUD.
+7. Implementar os relatórios SQL.
+8. Criar os menus e a tela inicial.
+9. Testar o funcionamento no Linux.
+10. Completar o README e o PROMPTS.md.
+11. Gravar o vídeo demonstrativo.
+
+## 9. Próxima etapa
+
+A próxima etapa será testar o script SQL já existente no PostgreSQL.
+
+Depois da validação do banco, começaremos o desenvolvimento da aplicação Python, seguindo a estrutura das quatro entidades.
+
+Todas as consultas e alterações serão realizadas com SQL explícito, sem utilização de ORM, conforme as exigências do professor.

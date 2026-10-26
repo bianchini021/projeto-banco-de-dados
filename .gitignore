@@ -1,0 +1,5 @@
+src/utils/passphrase/
+__pycache__/
+*.pyc
+.venv/
+.env

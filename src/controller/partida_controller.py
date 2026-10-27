@@ -1,5 +1,6 @@
 """CRUD da tabela partidas, respeitando as regras de estado/placar do schema.sql."""
 from src.model.partida import Partida
+from src.model.clube import Clube
 from src.controller._base import BaseController, ErroValidacao, data, inteiro
 
 
@@ -24,23 +25,41 @@ def validar_partida(id_mandante, id_visitante, rodada, data_partida,
 
 
 class PartidaController(BaseController):
-    _COLUNAS = ("id_partida, id_mandante, id_visitante, rodada, "
-                "data_partida, status, gols_mandante, gols_visitante")
+    _COLUNAS = (
+        "p.id_partida, p.rodada, p.data_partida, p.status, "
+        "p.gols_mandante, p.gols_visitante, "
+        "m.id_clube, m.nome, m.cidade, "
+        "v.id_clube, v.nome, v.cidade"
+    )
+    _TABELAS = (
+        "FROM partidas p "
+        "JOIN clubes m ON m.id_clube = p.id_mandante "
+        "JOIN clubes v ON v.id_clube = p.id_visitante "
+    )
+
+    @staticmethod
+    def _criar_partida(r):
+        return Partida(
+            id_partida=r[0], rodada=r[1], data_partida=r[2],
+            status=r[3], gols_mandante=r[4], gols_visitante=r[5],
+            mandante=Clube(*r[6:9]), visitante=Clube(*r[9:12]),
+        )
 
     def listar_partidas(self):
         registros = self._executar(
-            f"SELECT {self._COLUNAS} FROM partidas ORDER BY id_partida",
-            retorno="todos",
+            f"SELECT {self._COLUNAS} {self._TABELAS} "
+            "ORDER BY p.id_partida", retorno="todos",
         )
-        return [Partida(*registro) for registro in registros]
+        return [self._criar_partida(r) for r in registros]
 
     def buscar_partida(self, id_partida):
         id_partida = inteiro(id_partida, "id_partida")
         registro = self._executar(
-            f"SELECT {self._COLUNAS} FROM partidas WHERE id_partida = %s",
+            f"SELECT {self._COLUNAS} {self._TABELAS} "
+            "WHERE p.id_partida = %s",
             (id_partida,), retorno="um",
         )
-        return Partida(*registro) if registro is not None else None
+        return self._criar_partida(registro) if registro else None
 
     def cadastrar_partida(self, id_mandante, id_visitante, rodada, data_partida,
                          status="ABERTA", gols_mandante=None, gols_visitante=None):

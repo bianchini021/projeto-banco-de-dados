@@ -1,10 +1,14 @@
-"""Entidade Partida do campeonato, no padrão de models do professor."""
+"""Partida associada aos objetos Clube mandante e visitante."""
+from src.model.clube import Clube
+
 
 class Partida:
-    def __init__(self, id_partida=None, id_mandante=None, id_visitante=None, rodada=None, data_partida=None, status=None, gols_mandante=None, gols_visitante=None):
+    def __init__(self, id_partida=None, mandante=None, visitante=None,
+                 rodada=None, data_partida=None, status=None,
+                 gols_mandante=None, gols_visitante=None):
         self.set_id_partida(id_partida)
-        self.set_id_mandante(id_mandante)
-        self.set_id_visitante(id_visitante)
+        self.set_mandante(mandante)
+        self.set_visitante(visitante)
         self.set_rodada(rodada)
         self.set_data_partida(data_partida)
         self.set_status(status)
@@ -17,17 +21,27 @@ class Partida:
     def get_id_partida(self):
         return self.id_partida
 
-    def set_id_mandante(self, valor):
-        self.id_mandante = valor
+    def set_mandante(self, clube: Clube):
+        if clube is not None and not isinstance(clube, Clube):
+            raise TypeError("mandante deve ser um objeto Clube.")
+        self.mandante = clube
+
+    def get_mandante(self) -> Clube:
+        return self.mandante
 
     def get_id_mandante(self):
-        return self.id_mandante
+        return self.mandante.get_id_clube() if self.mandante else None
 
-    def set_id_visitante(self, valor):
-        self.id_visitante = valor
+    def set_visitante(self, clube: Clube):
+        if clube is not None and not isinstance(clube, Clube):
+            raise TypeError("visitante deve ser um objeto Clube.")
+        self.visitante = clube
+
+    def get_visitante(self) -> Clube:
+        return self.visitante
 
     def get_id_visitante(self):
-        return self.id_visitante
+        return self.visitante.get_id_clube() if self.visitante else None
 
     def set_rodada(self, valor):
         self.rodada = valor
@@ -60,13 +74,12 @@ class Partida:
         return self.gols_visitante
 
     def to_string(self):
+        mandante = self.mandante.get_nome() if self.mandante else "?"
+        visitante = self.visitante.get_nome() if self.visitante else "?"
+        placar = ("- x -" if self.status == "ABERTA" else
+                  f"{self.gols_mandante} x {self.gols_visitante}")
         return (
-            f"id_partida: {self.get_id_partida()} | "
-            f"id_mandante: {self.get_id_mandante()} | "
-            f"id_visitante: {self.get_id_visitante()} | "
-            f"rodada: {self.get_rodada()} | "
-            f"data_partida: {self.get_data_partida()} | "
-            f"status: {self.get_status()} | "
-            f"gols_mandante: {self.get_gols_mandante()} | "
-            f"gols_visitante: {self.get_gols_visitante()}"
+            f"ID: {self.id_partida} | Rodada: {self.rodada} | "
+            f"{mandante} {placar} {visitante} | "
+            f"Data: {self.data_partida} | Status: {self.status}"
         )

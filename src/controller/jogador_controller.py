@@ -1,5 +1,6 @@
 """CRUD da tabela jogadores."""
 from src.model.jogador import Jogador
+from src.model.clube import Clube
 from src.controller._base import BaseController, ErroValidacao, inteiro, texto
 
 POSICOES = frozenset({
@@ -15,22 +16,33 @@ def validar_posicao(valor):
 
 
 class JogadorController(BaseController):
+    @staticmethod
+    def _criar_jogador(registro):
+        return Jogador(
+            registro[0], registro[1], registro[2],
+            Clube(registro[3], registro[4], registro[5]),
+        )
+
     def listar_jogadores(self):
         registros = self._executar(
-            "SELECT id_jogador, nome, posicao, id_clube "
-            "FROM jogadores ORDER BY id_jogador",
+            "SELECT j.id_jogador, j.nome, j.posicao, "
+            "c.id_clube, c.nome, c.cidade "
+            "FROM jogadores j JOIN clubes c ON c.id_clube = j.id_clube "
+            "ORDER BY j.id_jogador",
             retorno="todos",
         )
-        return [Jogador(*registro) for registro in registros]
+        return [self._criar_jogador(r) for r in registros]
 
     def buscar_jogador(self, id_jogador):
         id_jogador = inteiro(id_jogador, "id_jogador")
         registro = self._executar(
-            "SELECT id_jogador, nome, posicao, id_clube "
-            "FROM jogadores WHERE id_jogador = %s",
+            "SELECT j.id_jogador, j.nome, j.posicao, "
+            "c.id_clube, c.nome, c.cidade "
+            "FROM jogadores j JOIN clubes c ON c.id_clube = j.id_clube "
+            "WHERE j.id_jogador = %s",
             (id_jogador,), retorno="um",
         )
-        return Jogador(*registro) if registro is not None else None
+        return self._criar_jogador(registro) if registro else None
 
     def cadastrar_jogador(self, nome, posicao, id_clube):
         nome = texto(nome, "nome", 100)

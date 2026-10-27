@@ -1,25 +1,54 @@
 """CRUD da tabela gols."""
 from src.model.gol import Gol
+from src.model.clube import Clube
+from src.model.partida import Partida
+from src.model.jogador import Jogador
 from src.controller._base import BaseController, ErroValidacao, inteiro
 
 
 class GolController(BaseController):
+    _COLUNAS = (
+        "g.id_gol, g.minuto, "
+        "j.id_jogador, j.nome, j.posicao, "
+        "jc.id_clube, jc.nome, jc.cidade, "
+        "p.id_partida, p.rodada, p.data_partida, p.status, "
+        "p.gols_mandante, p.gols_visitante, "
+        "m.id_clube, m.nome, m.cidade, "
+        "v.id_clube, v.nome, v.cidade"
+    )
+    _TABELAS = (
+        "FROM gols g "
+        "JOIN jogadores j ON j.id_jogador = g.id_jogador "
+        "JOIN clubes jc ON jc.id_clube = j.id_clube "
+        "JOIN partidas p ON p.id_partida = g.id_partida "
+        "JOIN clubes m ON m.id_clube = p.id_mandante "
+        "JOIN clubes v ON v.id_clube = p.id_visitante "
+    )
+
+    @staticmethod
+    def _criar_gol(r):
+        jogador = Jogador(r[2], r[3], r[4], Clube(*r[5:8]))
+        partida = Partida(
+            id_partida=r[8], rodada=r[9], data_partida=r[10],
+            status=r[11], gols_mandante=r[12], gols_visitante=r[13],
+            mandante=Clube(*r[14:17]), visitante=Clube(*r[17:20]),
+        )
+        return Gol(r[0], partida, jogador, r[1])
+
     def listar_gols(self):
         registros = self._executar(
-            "SELECT id_gol, id_partida, id_jogador, minuto "
-            "FROM gols ORDER BY id_gol",
-            retorno="todos",
+            f"SELECT {self._COLUNAS} {self._TABELAS} "
+            "ORDER BY g.id_gol", retorno="todos",
         )
-        return [Gol(*registro) for registro in registros]
+        return [self._criar_gol(r) for r in registros]
 
     def buscar_gol(self, id_gol):
         id_gol = inteiro(id_gol, "id_gol")
         registro = self._executar(
-            "SELECT id_gol, id_partida, id_jogador, minuto "
-            "FROM gols WHERE id_gol = %s",
-            (id_gol,), retorno="um",
+            f"SELECT {self._COLUNAS} {self._TABELAS} "
+            "WHERE g.id_gol = %s", (id_gol,), retorno="um",
         )
-        return Gol(*registro) if registro is not None else None
+        return self._criar_gol(registro) if registro else None
 
     def _validar_gol(self, id_partida, id_jogador, minuto):
         id_partida = inteiro(id_partida, "id_partida")

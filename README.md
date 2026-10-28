@@ -90,3 +90,82 @@ export PGPASSWORD=postgres
 
 > As variáveis valem só para o terminal aberto. Se fechar o terminal, rode os
 > `export` de novo antes de iniciar o programa.
+## 6. Criar as tabelas
+
+```bash
+psql -h localhost -U postgres -d campeonato -f src/SQL/schema.sql
+```
+
+O script cria as tabelas `clubes`, `jogadores`, `partidas` e `gols`. Ele pode
+ser executado mais de uma vez sem erro (`CREATE TABLE IF NOT EXISTS`).
+
+<!-- TODO (Gabriel): incluir aqui o comando para carregar os dados de teste,
+     por exemplo:
+     psql -h localhost -U postgres -d campeonato -f src/SQL/<arquivo_de_dados>.sql -->
+
+## 7. Instalar as bibliotecas Python
+
+Crie um ambiente virtual (necessário nas versões recentes do Ubuntu/Debian,
+que bloqueiam `pip install` direto no sistema):
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+> Sempre que abrir um terminal novo, ative o ambiente com
+> `source .venv/bin/activate` antes de executar o programa.
+
+## 8. Executar
+
+Dentro da pasta do projeto, com o ambiente virtual ativo e as variáveis do
+passo 5 definidas:
+
+```bash
+python3 -m src.main
+```
+
+> Use `python3 -m src.main`, e **não** `python3 src/main.py`: os imports do
+> projeto começam com `src.` e só funcionam quando o programa é iniciado a
+> partir da pasta raiz.
+
+### Resumo para as próximas execuções
+
+```bash
+cd projeto-banco-de-dados
+source .venv/bin/activate
+export DB_NAME=campeonato PGPASSWORD=postgres
+python3 -m src.main
+```
+
+---
+
+## Estrutura do projeto
+
+```
+projeto-banco-de-dados/
+├── README.md
+├── PROMPTS.md                  # registro do uso de IA
+├── requirements.txt
+├── Regras de Negócio e Modelagem/   # diagrama relacional e regras
+└── src/
+    ├── main.py                 # ponto de entrada (menu principal)
+    ├── Controlador/            # CRUD de cada tabela
+    ├── Modelo/                 # classes das entidades
+    ├── Relatórios/             # consultas dos relatórios
+    ├── SQL/schema.sql          # criação das tabelas
+    └── utils/                  # conexão, menus e configurações
+```
+
+## Problemas comuns
+
+| Mensagem | Causa provável | Solução |
+|---|---|---|
+| `ModuleNotFoundError: No module named 'src'` | Programa iniciado fora da pasta raiz ou com `python3 src/main.py` | Entrar na pasta do projeto e usar `python3 -m src.main` |
+| `ModuleNotFoundError: No module named 'psycopg'` | Ambiente virtual não ativado ou bibliotecas não instaladas | `source .venv/bin/activate` e `pip install -r requirements.txt` |
+| `password authentication failed for user "postgres"` | `PGPASSWORD` não definido ou diferente da senha do passo 3 | Rodar `export PGPASSWORD=<senha>` |
+| `database "campeonato" does not exist` | Banco não criado | Repetir o passo 3 |
+| `relation "clubes" does not exist` | Tabelas não criadas ou `DB_NAME` errado | Repetir o passo 6 e conferir `export DB_NAME=campeonato` |
+| `Connection refused` | PostgreSQL parado | `sudo systemctl start postgresql` |
+| `SyntaxError` perto de `match` | Python anterior ao 3.10 | Instalar Python 3.10 ou superior |

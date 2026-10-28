@@ -1,6 +1,6 @@
 """CRUD da tabela clubes."""
 from src.model.clube import Clube
-from src.controller._base import BaseController, inteiro, texto
+from src.controller._base import BaseController, ReferenciaInvalida, inteiro, texto
 
 
 class ClubeController(BaseController):
@@ -39,8 +39,30 @@ class ClubeController(BaseController):
         )
         return registro is not None
 
+    def contar_dependentes(self, id_clube):
+        id_clube = inteiro(id_clube, "id_clube")
+        jogadores = self._executar(
+            "SELECT COUNT(1) FROM jogadores WHERE id_clube = %s",
+            (id_clube,), retorno="um",
+        )[0]
+        partidas = self._executar(
+            "SELECT COUNT(1) FROM partidas "
+            "WHERE id_mandante = %s OR id_visitante = %s",
+            (id_clube, id_clube), retorno="um",
+        )[0]
+        return jogadores, partidas
+
+
     def excluir_clube(self, id_clube):
         id_clube = inteiro(id_clube, "id_clube")
+         jogadores, partidas = self.contar_dependentes(id_clube)
+        if jogadores > 0 or partidas > 0:
+            raise ReferenciaInvalida(
+                f"O clube {id_clube} não pode ser excluído: "
+                f"possui {jogadores} jogador(es) e "
+                f"{partidas} partida(s) vinculados. "
+                "Remova ou transfira esses registros antes."
+            )
         registro = self._executar(
             "DELETE FROM clubes WHERE id_clube = %s RETURNING id_clube",
             (id_clube,), retorno="um", escrita=True,

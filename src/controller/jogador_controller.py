@@ -60,6 +60,17 @@ class JogadorController(BaseController):
         nome = texto(nome, "nome", 100)
         posicao = validar_posicao(posicao)
         id_clube = inteiro(id_clube, "id_clube")
+
+        # SUA CONTRIBUIÇÃO: Regra de negócio que impede mudança de clube se houver gols
+        jogador_atual = self.buscar_jogador(id_jogador)
+        if jogador_atual and jogador_atual.get_id_clube() != id_clube:
+            tem_gols = self._executar(
+                "SELECT 1 FROM gols WHERE id_jogador = %s",
+                (id_jogador,), retorno="um"
+            )
+            if tem_gols:
+                raise ErroValidacao("Não é permitido alterar o clube de um jogador que já possui gols registrados.")
+
         registro = self._executar(
             "UPDATE jogadores SET nome = %s, posicao = %s, id_clube = %s "
             "WHERE id_jogador = %s RETURNING id_jogador",

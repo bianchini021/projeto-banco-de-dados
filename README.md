@@ -1,92 +1,150 @@
-# projeto-banco-de-dados
 # Gerenciador de Campeonato de Futebol
 
-Aplicação de linha de comando em Python que gerencia um campeonato de futebol
-(clubes, jogadores, partidas e gols) sobre um banco de dados PostgreSQL.
+Aplicação de linha de comando em Python para gerenciar clubes, jogadores,
+partidas e gols em PostgreSQL.
 
 - **Disciplina:** Banco de Dados – Semestre 2026/2
 - **Professor:** Howard Roatti
 - **Grupo:** Betânia, Eduardo, Gabriel, Vinícius e Vitor
 
-Este guia explica como executar o projeto no **Linux** (ambiente da VM da
-disciplina). Os comandos são para distribuições baseadas em Debian/Ubuntu (`apt`).
+Este guia utiliza a VM original da disciplina, cujo PostgreSQL já está
+configurado em Docker Compose. Não é necessário instalar outro PostgreSQL
+nem alterar a senha do serviço.
 
----
+## 1. Iniciar os serviços da VM
 
-## 1. Pré-requisitos
+```bash
+cd ~/database_services
+docker compose up -d
+docker compose ps
+```
 
-| Item | Versão mínima |
-|---|---|
-| Python | 3.10 (o código usa `match`/`case`) |
-| PostgreSQL | 12 ou superior |
-| Git | qualquer versão recente |
+Confira se o serviço PostgreSQL está em execução e com a porta 5432 publicada.
+Os padrões são host `localhost`, porta `5432` e banco `postgres`. O usuário da
+VM é `postgres` e deve ser informado por uma das opções abaixo.
+Utilize a senha já configurada no ambiente da disciplina; consulte
+a configuração local do serviço ou o professor para obtê-la.
 
-Confira o que já está instalado:
+## 2. Clonar e preparar o projeto
+
+São necessários Python 3.10 ou superior, suporte a `venv`, Git e o cliente
+`psql` para executar o script SQL. Confira as ferramentas disponíveis na VM:
 
 ```bash
 python3 --version
-psql --version
 git --version
+psql --version
 ```
-
-## 2. Instalar as dependências do sistema
-
-```bash
-sudo apt update
-sudo apt install -y postgresql postgresql-contrib python3 python3-venv python3-pip git
-```
-
-Inicie o PostgreSQL e deixe-o ligado sempre que a máquina iniciar:
-
-```bash
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
-```
-
-## 3. Preparar o banco de dados
-
-Defina uma senha para o usuário `postgres` (o exemplo usa `postgres`; troque se quiser):
-
-```bash
-sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
-```
-
-Crie o banco do projeto:
-
-```bash
-sudo -u postgres createdb campeonato
-```
-
-## 4. Baixar o projeto
 
 ```bash
 git clone https://github.com/bianchini021/projeto-banco-de-dados.git
 cd projeto-banco-de-dados
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
-> Todos os comandos a partir daqui devem ser executados **dentro da pasta
-> `projeto-banco-de-dados`**.
+Execute os próximos comandos na raiz do projeto. Ao abrir outro terminal,
+volte à pasta e ative o ambiente com `source .venv/bin/activate`.
 
-## 5. Configurar a conexão
+## 3. Configurar a autenticação
 
-A aplicação lê a conexão das variáveis de ambiente abaixo. Execute-as no mesmo
-terminal em que o programa será iniciado:
+Há duas opções. Se o arquivo local existir, suas credenciais têm prioridade.
+Se estiver ausente, o Psycopg resolve as credenciais pelo ambiente.
+
+### Opção A: arquivo local
+
+Copie o modelo versionado e restrinja o acesso ao arquivo local:
 
 ```bash
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_NAME=campeonato
-export DB_USER=postgres
-export PGPASSWORD=postgres
+cp src/utils/passphrase/authentication.postgres.example src/utils/passphrase/authentication.postgres
+chmod 600 src/utils/passphrase/authentication.postgres
+nano src/utils/passphrase/authentication.postgres
 ```
+
+Substitua o marcador pela senha já configurada na VM, mantendo uma única linha
+no formato `usuario,senha`:
+
+```text
+postgres,SUBSTITUA_PELA_SENHA_DA_VM
+```
+
+Não coloque aspas em torno dos valores. A primeira vírgula separa o usuário da
+senha; vírgulas adicionais fazem parte da senha. O arquivo armazena somente
+usuário e senha e é ignorado pelo Git. Nunca versione credenciais reais.
+
+A aplicação encontra esse arquivo a partir da localização de `database.py` e
+fornece as credenciais diretamente ao driver. Um arquivo inválido deve ser
+corrigido: não há tentativa automática com outras credenciais nesse caso.
+
+### Opção B: variáveis de ambiente
+
+Sem `src/utils/passphrase/authentication.postgres`, a aplicação não passa
+`user` nem `password` ao Psycopg. O driver utiliza sua resolução padrão de
+credenciais, incluindo `PGUSER` e `PGPASSWORD`. Para configurar no terminal
+da VM sem digitar a senha diretamente no histórico de comandos do Bash:
+
+```bash
+export PGUSER=postgres
+read -r -s -p 'Senha do PostgreSQL da VM: ' PGPASSWORD
+printf '\n'
+export PGPASSWORD
+```
+
+Inicie o programa nesse mesmo terminal. Ao fechar o terminal, configure as
+variáveis novamente. Não é necessário criar um `.pgpass`; outras fontes
+padrão do driver continuam disponíveis. `DB_USER` não é utilizado.
+Para deixar de fornecer a senha nesse terminal, execute `unset PGPASSWORD`.
+
+O atributo `PostgresQueries.user` reflete `PGUSER` antes da conexão, ou o usuário
+do arquivo quando ele é lido. Após conectar, reflete o usuário efetivo informado
+pelo Psycopg, inclusive quando resolvido por outras fontes padrão do driver.
+
+Falhas de conexão exibem uma orientação e, quando reconhecido, o motivo:
+autenticação, serviço recusando conexão, tempo limite, endereço não resolvido,
+banco inexistente ou SSL. O texto original do erro não é exibido, evitando
+expor senhas; o tipo da exceção e seu SQLSTATE são preservados para diagnóstico.
+
+### Host, porta e banco
+
+Os demais parâmetros continuam aceitando variáveis de ambiente opcionais:
 
 | Variável | Padrão | Função |
 |---|---|---|
 | `DB_HOST` | `localhost` | Endereço do servidor |
 | `DB_PORT` | `5432` | Porta do PostgreSQL |
 | `DB_NAME` | `postgres` | Nome do banco |
-| `DB_USER` | `postgres` | Usuário |
-| `PGPASSWORD` | — | Senha do usuário (lida diretamente pelo driver) |
 
-> As variáveis valem só para o terminal aberto. Se fechar o terminal, rode os
-> `export` de novo antes de iniciar o programa.
+Na VM original, não é necessário definir essas variáveis. Caso estejam
+configuradas para outro ambiente, remova-as do terminal com:
+
+```bash
+unset DB_HOST DB_PORT DB_NAME
+```
+
+## 4. Criar as tabelas
+
+Com o serviço ativo, execute o esquema no banco `postgres` existente:
+
+```bash
+psql -h localhost -p 5432 -U postgres -d postgres -W -v ON_ERROR_STOP=1 -f src/sql/schema.sql
+```
+
+Digite a senha da VM quando solicitada. Esse comando usa o cliente `psql`,
+que não lê o arquivo de autenticação da aplicação. A opção `-W` solicita a
+senha interativamente mesmo com `PGPASSWORD` definido. Não é necessário criar
+um banco chamado `campeonato`. Se usar outros parâmetros de conexão, ajuste
+também os argumentos do comando `psql`.
+
+## 5. Executar
+
+Na raiz do projeto, com o ambiente virtual ativo:
+
+```bash
+python -m src.main
+```
+
+Use os menus para consultar e cadastrar registros e acessar os relatórios.
+Se a conexão falhar, confira o estado do serviço com `docker compose ps` em
+`~/database_services`, as credenciais do arquivo local ou `PGUSER`/`PGPASSWORD`
+(quando o arquivo estiver ausente) e as variáveis `DB_*`.

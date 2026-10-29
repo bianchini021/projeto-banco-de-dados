@@ -1,9 +1,11 @@
 """Ponto de entrada do Gerenciador de Campeonato."""
 from src.utils.config import MENU_PRINCIPAL
 from src.utils.menus import menu_operacao, menu_relatorios
+from src.utils.splash_screen import splash_screen
 
 
 def main():
+    splash_screen()
     while True:
         print(MENU_PRINCIPAL)
         opcao = input("Escolha uma opção: ").strip()

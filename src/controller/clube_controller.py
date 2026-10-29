@@ -1,8 +1,6 @@
 """CRUD da tabela clubes."""
 from src.model.clube import Clube
 from src.controller._base import BaseController, ReferenciaInvalida, inteiro, texto
-
-
 class ClubeController(BaseController):
     def listar_clubes(self):
         registros = self._executar(
@@ -55,7 +53,7 @@ class ClubeController(BaseController):
 
     def excluir_clube(self, id_clube):
         id_clube = inteiro(id_clube, "id_clube")
-         jogadores, partidas = self.contar_dependentes(id_clube)
+        jogadores, partidas = self.contar_dependentes(id_clube)
         if jogadores > 0 or partidas > 0:
             raise ReferenciaInvalida(
                 f"O clube {id_clube} não pode ser excluído: "

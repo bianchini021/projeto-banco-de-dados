@@ -48,11 +48,18 @@ class SplashScreen:
         except Exception as erro:
             print("Não foi possível consultar o banco de dados.")
             print(f"Detalhes: {erro}")
+            print("-" * 46)
+            print("Não foi possível iniciar o sistema.")
+            print("Verifique a conexão com o PostgreSQL,")
+            print("as credenciais e a criação das tabelas.")
+            print("=" * 46)
+            return False
         else:
             for tabela, quantidade in quantidades.items():
                 print(f"{tabela.capitalize()}: {quantidade}")
         print("=" * 46)
+        return True
 
 
 def splash_screen():
-    SplashScreen().exibir()
+    return SplashScreen().exibir()

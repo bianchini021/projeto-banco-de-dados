@@ -5,7 +5,8 @@ from src.utils.splash_screen import splash_screen
 
 
 def main():
-    splash_screen()
+    if not splash_screen():
+        return
     while True:
         print(MENU_PRINCIPAL)
         opcao = input("Escolha uma opção: ").strip()

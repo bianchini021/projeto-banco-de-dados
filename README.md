@@ -36,6 +36,25 @@ git --version
 psql --version
 ```
 
+### Caso o psql não esteja instalado, siga os passos abaixo:
+
+Na VM Ubuntu, atualize a lista de pacotes e instale o cliente PostgreSQL:
+
+```bash
+sudo apt update
+sudo apt install -y postgresql-client
+```
+
+Após a instalação, verifique se o psql está disponível:
+
+```bash
+psql --version
+```
+
+Se a versão do PostgreSQL for exibida, a instalação foi concluída.
+
+Observação: não é necessário instalar o servidor PostgreSQL (postgresql) nem iniciar outro serviço, pois o banco já está configurado no Docker Compose da VM.
+
 ```bash
 git clone https://github.com/bianchini021/projeto-banco-de-dados.git
 cd projeto-banco-de-dados

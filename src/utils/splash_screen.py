@@ -7,6 +7,7 @@ class SplashScreen:
         self.projeto = "GERENCIADOR DE CAMPEONATO"
         self.professor = "Howard Roatti"
         self.disciplina = "Banco de Dados"
+        self.semestre = "2026/2"
         self.turma = "4SC1"
         self.integrantes = [
             "Betania Almeida Lopes",
@@ -34,6 +35,7 @@ class SplashScreen:
         print("=" * 46)
         print(f"Professor: {self.professor}")
         print(f"Disciplina: {self.disciplina}")
+        print(f"Semestre: {self.semestre}")
         print(f"Turma: {self.turma}")
         print("Integrantes:")
         for nome in self.integrantes:

@@ -210,6 +210,25 @@ def menu_relatorios():
                     for id_partida, data, mandante, visitante, jogador, clube, minuto in registros:
                         print(f"Partida {id_partida} ({data}): {mandante} x {visitante} | "
                               f"{jogador} ({clube}), {minuto}'")
+                case "3":
+                    registros = relatorios.artilheiros()
+                    if not registros:
+                        print("Sem artilheiros cadastrados.")
+                    for jogador, clube, total_gols in registros:
+                        print(f"{jogador} ({clube}): {total_gols} gol(s)")
+                case "4":
+                    registros = relatorios.partidas_mais_gols()
+                    if not registros:
+                        print("Sem partidas finalizadas.")
+                    for id_partida, rodada, data, mandante, gols_mandante, visitante, gols_visitante, total_gols in registros:
+                        print(f"Rodada {rodada} - Partida {id_partida} ({data}): "
+                              f"{mandante} {gols_mandante} x {visitante} {gols_visitante} | Total: {total_gols}")
+                case "5":
+                    registros = relatorios.gols_por_rodada()
+                    if not registros:
+                        print("Sem rodadas cadastradas.")
+                    for rodada, total_gols in registros:
+                        print(f"Rodada {rodada}: {total_gols} gol(s)")
                 case _:
                     print("Opção inválida.")
         except (psycopg.Error, OSError) as erro:

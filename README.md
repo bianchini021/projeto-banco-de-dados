@@ -148,3 +148,30 @@ Use os menus para consultar e cadastrar registros e acessar os relatórios.
 Se a conexão falhar, confira o estado do serviço com `docker compose ps` em
 `~/database_services`, as credenciais do arquivo local ou `PGUSER`/`PGPASSWORD`
 (quando o arquivo estiver ausente) e as variáveis `DB_*`.
+
+## Problemas comuns
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| "Conexão recusada" | Os serviços da VM não foram iniciados | Rodar `docker compose up -d` na pasta `~/database_services` |
+| "Autenticação recusada" | Senha errada no arquivo de credenciais | Corrija a senha em `src/utils/passphrase/authentication.postgres` e execute o programa de novo |
+| `relation "clubes" does not exist` | As tabelas não foram criadas | Execute o passo 4 (Criar as tabelas) |
+| `No module named 'psycopg'` | O ambiente virtual não foi ativado | Rodar `source .venv/bin/activate` na pasta do projeto |
+| `No module named 'src'` | O programa foi iniciado com `python src/main.py` | Usar `python -m src.main` na pasta do projeto |
+
+## Estrutura do projeto
+
+```
+projeto-banco-de-dados/
+├── Regras de Negócio e Modelagem/   # diagrama e regras de negócio
+├── README.md                        # explica como rodar o projeto
+├── PROMPTS.md                       # prompts utilizados durante o projeto
+├── requirements.txt                 # bibliotecas Python que o projeto usa
+└── src/
+    ├── main.py                      # programa principal
+    ├── controller/                  # CRUD de cada tabela
+    ├── model/                       # classes das entidades
+    ├── reports/                     # relatórios
+    ├── sql/                         # criação das tabelas e consultas dos relatórios
+    └── utils/                       # conexão com o banco, menus e tela de abertura
+```

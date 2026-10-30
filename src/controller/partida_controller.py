@@ -18,8 +18,11 @@ def validar_partida(id_mandante, id_visitante, rodada, data_partida,
         if gols_mandante is not None or gols_visitante is not None:
             raise ErroValidacao("Uma partida ABERTA não deve possuir placar definido.")
     else:
-        gols_mandante = inteiro(gols_mandante, "gols_mandante", minimo=0)
-        gols_visitante = inteiro(gols_visitante, "gols_visitante", minimo=0)
+        if (gols_mandante is None) != (gols_visitante is None):
+            raise ErroValidacao("Informe ambos os placares ou nenhum deles.")
+        if gols_mandante is not None:
+            gols_mandante = inteiro(gols_mandante, "gols_mandante", minimo=0)
+            gols_visitante = inteiro(gols_visitante, "gols_visitante", minimo=0)
     return (id_mandante, id_visitante, rodada, data_partida,
             status, gols_mandante, gols_visitante)
 
@@ -61,17 +64,39 @@ class PartidaController(BaseController):
         )
         return self._criar_partida(registro) if registro else None
 
+    @staticmethod
+    def _placar_por_gols(cursor, id_partida, id_mandante, id_visitante):
+        """Calcula o placar exclusivamente pelos gols registrados por clube."""
+        cursor.execute(
+            "SELECT COUNT(*) FILTER (WHERE j.id_clube = %s), "
+            "COUNT(*) FILTER (WHERE j.id_clube = %s) "
+            "FROM gols g JOIN jogadores j ON j.id_jogador = g.id_jogador "
+            "WHERE g.id_partida = %s",
+            (id_mandante, id_visitante, id_partida),
+        )
+        return cursor.fetchone()
+
+    @staticmethod
+    def _conferir_placar(placar_informado, placar_calculado):
+        if placar_informado[0] is not None and placar_informado != placar_calculado:
+            raise ErroValidacao(
+                "O placar informado não corresponde aos gols cadastrados. "
+                "O resultado é calculado automaticamente."
+            )
+
     def cadastrar_partida(self, id_mandante, id_visitante, rodada, data_partida,
                          status="ABERTA", gols_mandante=None, gols_visitante=None):
         valores = validar_partida(
             id_mandante, id_visitante, rodada, data_partida,
             status, gols_mandante, gols_visitante,
         )
+        placar = (0, 0) if status == "FINALIZADA" else (None, None)
+        self._conferir_placar((gols_mandante, gols_visitante), placar)
         registro = self._executar(
             "INSERT INTO partidas (id_mandante, id_visitante, rodada, "
             "data_partida, status, gols_mandante, gols_visitante) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id_partida",
-            valores, retorno="um", escrita=True,
+            (*valores[:5], *placar), retorno="um", escrita=True,
         )
         return registro[0]
 
@@ -83,31 +108,42 @@ class PartidaController(BaseController):
             id_mandante, id_visitante, rodada, data_partida,
             status, gols_mandante, gols_visitante,
         )
-        
-        novo_mandante, novo_visitante = valores[0], valores[1]
+        novo_mandante, novo_visitante = valores[:2]
 
-        conflito = self._executar(
-            "SELECT 1 FROM partidas p "
-            "WHERE p.id_partida = %s "
-            "AND (p.id_mandante <> %s OR p.id_visitante <> %s) "
-            "AND EXISTS (SELECT 1 FROM gols g WHERE g.id_partida = p.id_partida)",
-            (id_partida, novo_mandante, novo_visitante),
-            retorno="um",
-        )
-
-        if conflito is not None:
-            raise ErroValidacao(
-                "Não é permitido alterar os clubes de uma partida que já possui gols registrados."
+        def operacao(cursor):
+            cursor.execute(
+                "SELECT id_mandante, id_visitante FROM partidas "
+                "WHERE id_partida = %s FOR UPDATE", (id_partida,),
             )
+            atual = cursor.fetchone()
+            if atual is None:
+                return False
+            if atual != (novo_mandante, novo_visitante):
+                cursor.execute(
+                    "SELECT 1 FROM gols WHERE id_partida = %s LIMIT 1", (id_partida,),
+                )
+                if cursor.fetchone() is not None:
+                    raise ErroValidacao(
+                        "Não é permitido alterar os clubes de uma partida "
+                        "que já possui gols registrados."
+                    )
+            if status == "FINALIZADA":
+                placar = self._placar_por_gols(
+                    cursor, id_partida, novo_mandante, novo_visitante,
+                )
+            else:
+                placar = (None, None)
+            self._conferir_placar((gols_mandante, gols_visitante), placar)
+            cursor.execute(
+                "UPDATE partidas SET id_mandante = %s, id_visitante = %s, "
+                "rodada = %s, data_partida = %s, status = %s, "
+                "gols_mandante = %s, gols_visitante = %s "
+                "WHERE id_partida = %s RETURNING id_partida",
+                (*valores[:5], *placar, id_partida),
+            )
+            return cursor.fetchone() is not None
 
-        registro = self._executar(
-            "UPDATE partidas SET id_mandante = %s, id_visitante = %s, "
-            "rodada = %s, data_partida = %s, status = %s, "
-            "gols_mandante = %s, gols_visitante = %s "
-            "WHERE id_partida = %s RETURNING id_partida",
-            (*valores, id_partida), retorno="um", escrita=True,
-        )
-        return registro is not None
+        return self._em_transacao(operacao)
 
     def excluir_partida(self, id_partida):
         id_partida = inteiro(id_partida, "id_partida")

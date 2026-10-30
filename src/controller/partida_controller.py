@@ -83,6 +83,23 @@ class PartidaController(BaseController):
             id_mandante, id_visitante, rodada, data_partida,
             status, gols_mandante, gols_visitante,
         )
+        
+        novo_mandante, novo_visitante = valores[0], valores[1]
+
+        conflito = self._executar(
+            "SELECT 1 FROM partidas p "
+            "WHERE p.id_partida = %s "
+            "AND (p.id_mandante <> %s OR p.id_visitante <> %s) "
+            "AND EXISTS (SELECT 1 FROM gols g WHERE g.id_partida = p.id_partida)",
+            (id_partida, novo_mandante, novo_visitante),
+            retorno="um",
+        )
+
+        if conflito is not None:
+            raise ErroValidacao(
+                "Não é permitido alterar os clubes de uma partida que já possui gols registrados."
+            )
+
         registro = self._executar(
             "UPDATE partidas SET id_mandante = %s, id_visitante = %s, "
             "rodada = %s, data_partida = %s, status = %s, "

@@ -19,11 +19,28 @@ relatorios = Relatorios()
 
 
 def ler_inteiro(mensagem, atual=None):
+    """Solicita um inteiro válido, sem mostrar exceções de conversão ao usuário.
+
+    Enter preserva o valor existente somente durante a atualização.
+    IDs e demais campos numéricos obrigatórios não aceitam valores vazios.
+    """
     dica = f" [{atual}]" if atual is not None else ""
-    resposta = input(f"{mensagem}{dica}: ").strip()
-    if not resposta and atual is not None:
-        return atual
-    return int(resposta)
+    while True:
+        resposta = input(f"{mensagem}{dica}: ").strip()
+        if not resposta:
+            if atual is not None:
+                return atual
+            print("Campo obrigatório. Informe um número inteiro.")
+            continue
+        try:
+            numero = int(resposta)
+        except ValueError:
+            print("Valor inválido. Digite um número inteiro (ex.: 1).")
+            continue
+        if numero < 1:
+            print("Informe um número inteiro maior que zero.")
+            continue
+        return numero
 
 
 def ler_texto(mensagem, atual=None):

@@ -152,7 +152,7 @@ def remover(entidade):
     print("Selecionado:", atual.to_string())
     if not confirmar("Confirma a exclusão deste registro?"):
         print("Exclusão cancelada.")
-        return
+        return False
     match entidade:
         case "1": excluiu = clubes.excluir_clube(identificador)
         case "2": excluiu = jogadores.excluir_jogador(identificador)
@@ -178,7 +178,9 @@ def menu_operacao(acao):
                     match acao:
                         case "inserir": cadastrar(entidade)
                         case "atualizar": atualizar(entidade)
-                        case "remover": remover(entidade)
+                        case "remover":
+                            if remover(entidade) is False:
+                                return
                         case "consultar": consultar(entidade)
                 except (ValueError, ErroValidacao, RegistroDuplicado,
                         ReferenciaInvalida, psycopg.Error) as erro:

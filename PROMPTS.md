@@ -34,3 +34,23 @@ o projeto no Linux para criar o README.
 **Objetivo:** Gerar a massa de dados inicial.
 
 **Uso da IA:** Solicitei a criação de um script SQL (`dados_iniciais.sql`) contendo inserts de clubes, jogadores, partidas e gols para viabilizar os testes dos relatórios feitos pela equipe.
+
+## Vitor – Arquivo Principal e Diagrama Relacional
+
+**Ferramenta utilizada:** ChatGPT (OpenAI).
+
+**Objetivo:** Auxiliar na elaboração da estrutura inicial do arquivo `main.py` e na representação visual do banco de dados por meio de um diagrama entidade-relacionamento em Mermaid.
+
+**Prompts utilizados:**
+
+1. Solicitei à IA um esboço para o arquivo `main.py`, considerando um sistema de gerenciamento de campeonato de futebol desenvolvido em Python, com um menu principal para acessar relatórios e operações de inserção, atualização, remoção e consulta de registros.
+2. Pedi auxílio para estruturar o código Mermaid de um diagrama entidade-relacionamento, representando as tabelas `clubes`, `jogadores`, `partidas` e `gols`, com seus respectivos atributos, chaves primárias, chaves estrangeiras e relacionamentos.
+
+**O que fiz com as respostas:**
+
+- Utilizei o esboço gerado pela IA como referência para a estruturação do `main.py`, organizando o fluxo de execução do programa e o acesso às funcionalidades pelos menus.
+- Utilizei o código Mermaid como base para a representação visual das tabelas e de seus relacionamentos.
+- Comparei o diagrama com a estrutura definida no `schema.sql` e solicitei ajustes para representar corretamente os campos, as chaves e as restrições do banco.
+- Mantive o diagrama alinhado à implementação existente, sem adicionar entidades ou atributos que não fazem parte do projeto.
+
+**Participação:** A IA foi utilizada como ferramenta de apoio para produzir esboços e revisar a representação do banco de dados. Minha participação envolveu definir o que deveria ser representado, orientar os ajustes e conferir a correspondência entre o diagrama e a estrutura SQL do projeto.

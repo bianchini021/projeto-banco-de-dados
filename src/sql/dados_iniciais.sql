@@ -2,9 +2,9 @@ BEGIN;
 
 DO $$
 DECLARE
-    id_c1 INT; id_c2 INT; id_c3 INT; id_c4 INT;
-    id_j3 INT; id_j6 INT;
-    id_p1 INT;
+    id_c1 BIGINT; id_c2 BIGINT; id_c3 BIGINT; id_c4 BIGINT;
+    id_j3 BIGINT; id_j6 BIGINT;
+    id_p1 BIGINT;
 BEGIN
     -- Inserir clubes e capturar os IDs gerados
     INSERT INTO clubes (nome, cidade) VALUES ('Capixaba FC', 'Vitória') RETURNING id_clube INTO id_c1;

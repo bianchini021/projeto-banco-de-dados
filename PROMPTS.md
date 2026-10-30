@@ -26,3 +26,11 @@ o projeto no Linux para criar o README.
 **Uso da IA:** Solicitei auxílio para implementar a leitura das credenciais por meio do arquivo `authentication.postgres`, criar um arquivo de exemplo, configurar o `.gitignore` para proteger a senha real e atualizar as instruções de configuração no `README.md`.
 
 **Validação:** Testei a implementação na VM disponibilizada pelo professor. A conexão com o PostgreSQL funcionou corretamente, e a consulta `SELECT 1` retornou `(1,)`.
+
+## Gabriel – Dados de Teste
+
+**Ferramentas utilizadas:** IA (Gemini).
+
+**Objetivo:** Gerar a massa de dados inicial.
+
+**Uso da IA:** Solicitei a criação de um script SQL (`dados_iniciais.sql`) contendo inserts de clubes, jogadores, partidas e gols para viabilizar os testes dos relatórios feitos pela equipe.

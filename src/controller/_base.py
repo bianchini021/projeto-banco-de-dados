@@ -1,7 +1,8 @@
 """Helpers pequenos para os controllers PostgreSQL do campeonato.
 
-A conexão permanece em src.utils.database.PostgresQueries. As tabelas e
-colunas SQL são escritas explicitamente em cada controller (sem SQL dinâmico).
+SQL escrito manualmente, sem ORM. Os valores fornecidos pelo usuário são
+passados separadamente como parâmetros (%s) para evitar SQL injection;
+a montagem de trechos estáticos das queries não concatena dados do usuário.
 """
 from datetime import date, datetime
 
@@ -62,6 +63,35 @@ def data(valor):
 class BaseController:
     def __init__(self, banco_factory=PostgresQueries):
         self._banco_factory = banco_factory
+
+    def _em_transacao(self, operacao):
+        """Executa várias instruções com o MESMO cursor e commit atômico.
+
+        Necessário para que a gravação de um gol e a atualização do placar
+        sejam confirmadas ou desfeitas juntas.
+        """
+        banco = self._banco_factory()
+        try:
+            cursor = banco.connect()
+            resultado = operacao(cursor)
+            banco.conn.commit()
+            return resultado
+        except Exception as erro:
+            if banco.conn is not None and not banco.conn.closed:
+                banco.conn.rollback()
+            if isinstance(erro, psycopg.errors.UniqueViolation):
+                raise RegistroDuplicado("Já existe um registro com esse valor único.") from erro
+            if isinstance(erro, psycopg.errors.ForeignKeyViolation):
+                raise ReferenciaInvalida(
+                    "Registro relacionado inexistente ou exclusão bloqueada por dependências."
+                ) from erro
+            if isinstance(erro, (psycopg.errors.CheckViolation,
+                                  psycopg.errors.NotNullViolation,
+                                  psycopg.errors.StringDataRightTruncation)):
+                raise ErroValidacao("Dados rejeitados pelas regras do banco.") from erro
+            raise
+        finally:
+            banco.close()
 
     def _executar(self, sql, parametros=(), *, retorno="nenhum", escrita=False):
         """Executa uma instrução; confirma escrita ou desfaz em caso de erro.

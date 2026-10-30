@@ -14,3 +14,12 @@ class Relatorios(BaseController):
 
     def gols_detalhados(self):
         return self._executar(self._ler_sql("relatorio_gols_detalhados.sql"), retorno="todos")
+
+    def artilheiros(self):
+        return self._executar(self._ler_sql("relatorio_artilheiros.sql"), retorno="todos")
+
+    def partidas_mais_gols(self):
+        return self._executar(self._ler_sql("relatorio_partidas_mais_gols.sql"), retorno="todos")
+
+    def gols_por_rodada(self):
+        return self._executar(self._ler_sql("relatorio_gols_por_rodada.sql"), retorno="todos")

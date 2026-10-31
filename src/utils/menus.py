@@ -19,11 +19,28 @@ relatorios = Relatorios()
 
 
 def ler_inteiro(mensagem, atual=None):
+    """Solicita um inteiro válido, sem mostrar exceções de conversão ao usuário.
+
+    Enter preserva o valor existente somente durante a atualização.
+    IDs e demais campos numéricos obrigatórios não aceitam valores vazios.
+    """
     dica = f" [{atual}]" if atual is not None else ""
-    resposta = input(f"{mensagem}{dica}: ").strip()
-    if not resposta and atual is not None:
-        return atual
-    return int(resposta)
+    while True:
+        resposta = input(f"{mensagem}{dica}: ").strip()
+        if not resposta:
+            if atual is not None:
+                return atual
+            print("Campo obrigatório. Informe um número inteiro.")
+            continue
+        try:
+            numero = int(resposta)
+        except ValueError:
+            print("Valor inválido. Digite um número inteiro (ex.: 1).")
+            continue
+        if numero < 1:
+            print("Informe um número inteiro maior que zero.")
+            continue
+        return numero
 
 
 def ler_texto(mensagem, atual=None):
@@ -93,12 +110,8 @@ def informar_dados(entidade, atual=None):
             data = ler_texto("Data (AAAA-MM-DD)", str(atual.get_data_partida()) if atual else None)
             status = ler_texto("Status (ABERTA/FINALIZADA)", atual.get_status() if atual else "ABERTA").upper()
             if status == "FINALIZADA":
-                print("Informe o placar da partida. A regra de cálculo automático ainda será integrada.")
-                gm = ler_inteiro("Gols mandante", atual.get_gols_mandante() if atual else None)
-                gv = ler_inteiro("Gols visitante", atual.get_gols_visitante() if atual else None)
-            else:
-                gm = gv = None
-            return mandante, visitante, rodada, data, status, gm, gv
+                print("O placar será calculado automaticamente pelos gols cadastrados.")
+            return mandante, visitante, rodada, data, status, None, None
         case "4":
             mostrar_registros("3")
             mostrar_registros("2")
@@ -151,14 +164,15 @@ def remover(entidade):
         return
     print("Selecionado:", atual.to_string())
     if not confirmar("Confirma a exclusão deste registro?"):
-        print("Exclusão cancelada.")
-        return False
+        print("Exclusão cancelada. Retornando ao menu principal.")
+        return "cancelado"
     match entidade:
         case "1": excluiu = clubes.excluir_clube(identificador)
         case "2": excluiu = jogadores.excluir_jogador(identificador)
         case "3": excluiu = partidas.excluir_partida(identificador)
         case "4": excluiu = gols.excluir_gol(identificador)
     print("Registro excluído." if excluiu else "Registro não encontrado.")
+    return "excluido" if excluiu else "nao_encontrado"
 
 
 def consultar(entidade):
@@ -179,13 +193,19 @@ def menu_operacao(acao):
                         case "inserir": cadastrar(entidade)
                         case "atualizar": atualizar(entidade)
                         case "remover":
-                            if remover(entidade) is False:
+                            if remover(entidade) == "cancelado":
                                 return
                         case "consultar": consultar(entidade)
                 except (ValueError, ErroValidacao, RegistroDuplicado,
                         ReferenciaInvalida, psycopg.Error) as erro:
                     print(f"Operação não realizada: {erro}")
-                if not confirmar("Deseja realizar outra operação?"):
+                pergunta = {
+                    "inserir": "Deseja inserir mais algum registro?",
+                    "atualizar": "Deseja atualizar mais algum registro?",
+                    "remover": "Deseja excluir mais algum registro?",
+                    "consultar": "Deseja consultar mais algum registro?",
+                }[acao]
+                if not confirmar(pergunta):
                     return
             case _:
                 print("Opção inválida. Tente novamente.")
@@ -212,6 +232,25 @@ def menu_relatorios():
                     for id_partida, data, mandante, visitante, jogador, clube, minuto in registros:
                         print(f"Partida {id_partida} ({data}): {mandante} x {visitante} | "
                               f"{jogador} ({clube}), {minuto}'")
+                case "3":
+                    registros = relatorios.artilheiros()
+                    if not registros:
+                        print("Sem artilheiros cadastrados.")
+                    for jogador, clube, total_gols in registros:
+                        print(f"{jogador} ({clube}): {total_gols} gol(s)")
+                case "4":
+                    registros = relatorios.partidas_mais_gols()
+                    if not registros:
+                        print("Sem partidas finalizadas.")
+                    for id_partida, rodada, data, mandante, gols_mandante, visitante, gols_visitante, total_gols in registros:
+                        print(f"Rodada {rodada} - Partida {id_partida} ({data}): "
+                              f"{mandante} {gols_mandante} x {visitante} {gols_visitante} | Total: {total_gols}")
+                case "5":
+                    registros = relatorios.gols_por_rodada()
+                    if not registros:
+                        print("Sem rodadas cadastradas.")
+                    for rodada, total_gols in registros:
+                        print(f"Rodada {rodada}: {total_gols} gol(s)")
                 case _:
                     print("Opção inválida.")
         except (psycopg.Error, OSError) as erro:

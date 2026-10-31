@@ -50,44 +50,122 @@ class GolController(BaseController):
         )
         return self._criar_gol(registro) if registro else None
 
-    def _validar_gol(self, id_partida, id_jogador, minuto):
-        id_partida = inteiro(id_partida, "id_partida")
-        id_jogador = inteiro(id_jogador, "id_jogador")
-        minuto = inteiro(minuto, "minuto", minimo=1, maximo=130)
-        # Além das FKs, um gol deve pertencer a um atleta de um dos clubes da partida.
-        registro = self._executar(
+    @staticmethod
+    def _validar_valores(id_partida, id_jogador, minuto):
+        return (
+            inteiro(id_partida, "id_partida"),
+            inteiro(id_jogador, "id_jogador"),
+            inteiro(minuto, "minuto", minimo=1, maximo=130),
+        )
+
+    @staticmethod
+    def _bloquear_partidas(cursor, ids_partidas):
+        """Bloqueia os jogos envolvidos, em ordem, antes de alterar gols.
+
+        Serializa a recomputação do placar e impede atualizações perdidas.
+        """
+        for id_partida in sorted(set(ids_partidas)):
+            cursor.execute(
+                "SELECT id_partida FROM partidas WHERE id_partida = %s FOR UPDATE",
+                (id_partida,),
+            )
+            if cursor.fetchone() is None:
+                raise ErroValidacao(f"Partida {id_partida} não encontrada.")
+
+    @staticmethod
+    def _validar_participacao(cursor, id_partida, id_jogador):
+        # Além das FKs, o atleta deve pertencer a um clube da partida.
+        cursor.execute(
             "SELECT 1 FROM partidas p "
             "JOIN jogadores j ON j.id_clube IN (p.id_mandante, p.id_visitante) "
             "WHERE p.id_partida = %s AND j.id_jogador = %s",
-            (id_partida, id_jogador), retorno="um",
+            (id_partida, id_jogador),
         )
-        if registro is None:
+        if cursor.fetchone() is None:
             raise ErroValidacao("O jogador deve pertencer a um dos clubes da partida.")
-        return (id_partida, id_jogador, minuto)
+
+    @staticmethod
+    def _recalcular_placares(cursor, ids_partidas):
+        """Atualiza placares de partidas FINALIZADAS na mesma transação do gol.
+
+        Jogos ABERTOS permanecem sem placar até sua finalização.
+        """
+        for id_partida in sorted(set(ids_partidas)):
+            cursor.execute(
+                "UPDATE partidas p SET "
+                "gols_mandante = ("
+                "SELECT COUNT(*) FROM gols g "
+                "JOIN jogadores j ON j.id_jogador = g.id_jogador "
+                "WHERE g.id_partida = p.id_partida AND j.id_clube = p.id_mandante"
+                "), "
+                "gols_visitante = ("
+                "SELECT COUNT(*) FROM gols g "
+                "JOIN jogadores j ON j.id_jogador = g.id_jogador "
+                "WHERE g.id_partida = p.id_partida AND j.id_clube = p.id_visitante"
+                ") "
+                "WHERE p.id_partida = %s AND p.status = 'FINALIZADA'",
+                (id_partida,),
+            )
 
     def cadastrar_gol(self, id_partida, id_jogador, minuto):
-        valores = self._validar_gol(id_partida, id_jogador, minuto)
-        registro = self._executar(
-            "INSERT INTO gols (id_partida, id_jogador, minuto) "
-            "VALUES (%s, %s, %s) RETURNING id_gol",
-            valores, retorno="um", escrita=True,
-        )
-        return registro[0]
+        valores = self._validar_valores(id_partida, id_jogador, minuto)
+
+        def operacao(cursor):
+            self._bloquear_partidas(cursor, [valores[0]])
+            self._validar_participacao(cursor, valores[0], valores[1])
+            cursor.execute(
+                "INSERT INTO gols (id_partida, id_jogador, minuto) "
+                "VALUES (%s, %s, %s) RETURNING id_gol", valores,
+            )
+            id_gol = cursor.fetchone()[0]
+            self._recalcular_placares(cursor, [valores[0]])
+            return id_gol
+
+        return self._em_transacao(operacao)
 
     def atualizar_gol(self, id_gol, id_partida, id_jogador, minuto):
         id_gol = inteiro(id_gol, "id_gol")
-        valores = self._validar_gol(id_partida, id_jogador, minuto)
-        registro = self._executar(
-            "UPDATE gols SET id_partida = %s, id_jogador = %s, minuto = %s "
-            "WHERE id_gol = %s RETURNING id_gol",
-            (*valores, id_gol), retorno="um", escrita=True,
-        )
-        return registro is not None
+        valores = self._validar_valores(id_partida, id_jogador, minuto)
+
+        def operacao(cursor):
+            cursor.execute(
+                "SELECT id_partida FROM gols WHERE id_gol = %s FOR UPDATE", (id_gol,),
+            )
+            registro = cursor.fetchone()
+            if registro is None:
+                return False
+            id_anterior = registro[0]
+            self._bloquear_partidas(cursor, [id_anterior, valores[0]])
+            self._validar_participacao(cursor, valores[0], valores[1])
+            cursor.execute(
+                "UPDATE gols SET id_partida = %s, id_jogador = %s, minuto = %s "
+                "WHERE id_gol = %s RETURNING id_gol", (*valores, id_gol),
+            )
+            alterou = cursor.fetchone() is not None
+            if alterou:
+                self._recalcular_placares(cursor, [id_anterior, valores[0]])
+            return alterou
+
+        return self._em_transacao(operacao)
 
     def excluir_gol(self, id_gol):
         id_gol = inteiro(id_gol, "id_gol")
-        registro = self._executar(
-            "DELETE FROM gols WHERE id_gol = %s RETURNING id_gol",
-            (id_gol,), retorno="um", escrita=True,
-        )
-        return registro is not None
+
+        def operacao(cursor):
+            cursor.execute(
+                "SELECT id_partida FROM gols WHERE id_gol = %s FOR UPDATE", (id_gol,),
+            )
+            registro = cursor.fetchone()
+            if registro is None:
+                return False
+            id_partida = registro[0]
+            self._bloquear_partidas(cursor, [id_partida])
+            cursor.execute(
+                "DELETE FROM gols WHERE id_gol = %s RETURNING id_gol", (id_gol,),
+            )
+            excluiu = cursor.fetchone() is not None
+            if excluiu:
+                self._recalcular_placares(cursor, [id_partida])
+            return excluiu
+
+        return self._em_transacao(operacao)

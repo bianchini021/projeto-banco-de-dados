@@ -23,5 +23,8 @@ MENU_RELATORIOS = """
 === RELATÓRIOS ===
 1 - Quantidade de gols por clube (GROUP BY)
 2 - Gols detalhados por partida (JOIN)
+3 - Ranking geral de artilheiros (GROUP BY)
+4 - Partidas com mais gols (ORDER BY)
+5 - Total de gols por rodada (GROUP BY)
 0 - Voltar ao menu principal
 """

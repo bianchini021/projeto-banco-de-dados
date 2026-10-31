@@ -175,3 +175,9 @@ projeto-banco-de-dados/
     ├── sql/                         # criação das tabelas e consultas dos relatórios
     └── utils/                       # conexão com o banco, menus e tela de abertura
 ```
+
+## 🎥 Apresentação do Projeto
+
+Confira no vídeo abaixo a demonstração completa do sistema em funcionamento, incluindo a execução das operações de CRUD integradas ao PostgreSQL e a geração de relatórios dinâmicos:
+
+[![Apresentação do Projeto - Banco de Dados FAESA](https://img.youtube.com/vi/oRQJuGfXQvQ/0.jpg)](https://youtu.be/oRQJuGfXQvQ)
